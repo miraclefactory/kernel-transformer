@@ -1,2 +1,2 @@
-# symnet
-Self-improving Symbiote Networks for Volumetric Medical Image Registration.
+# Kernel Transformer
+A transformer model based on kernel-level self-attention.
