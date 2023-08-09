@@ -80,13 +80,13 @@ class PatchMerging(nn.Module):
 
 
 class HierarchicalLayers(nn.Module):
-    def __init__(self, embed_dim, window_size, heads, depth, num_blocks):
+    def __init__(self, embed_dim, kernel_size, heads, depth, num_blocks):
         super(HierarchicalLayers, self).__init__()
 
         layers = []
         for _ in range(depth):
             for _ in range(num_blocks):
-                layers.append(KernelTransformerBlock(dim=embed_dim, window_size=window_size, heads=heads))
+                layers.append(KernelTransformerBlock(dim=embed_dim, kernel_size=kernel_size, heads=heads))
             if _ < depth - 1:
                 layers.append(PatchMerging(embed_dim, embed_dim * 2))
                 embed_dim *= 2
@@ -98,13 +98,13 @@ class HierarchicalLayers(nn.Module):
 
 
 class HierarchicalKernelTransformer(nn.Module):
-    def __init__(self, in_channels, img_dim, embed_dim, window_size, heads, num_classes=10, depth=4, num_blocks=2):
+    def __init__(self, in_channels, img_dim, embed_dim, kernel_size, heads, num_classes=10, depth=4, num_blocks=2):
         super(HierarchicalKernelTransformer, self).__init__()
 
         self.patch_embed = PatchEmbedding(in_channels, embed_dim, patch_size=4)
         self.pos_embed = nn.Parameter(torch.zeros(1, (img_dim // 4)**2, embed_dim))  # for an initial patch size of 4
         
-        self.hierarchical_layers = HierarchicalLayers(embed_dim, window_size, heads, depth, num_blocks)
+        self.hierarchical_layers = HierarchicalLayers(embed_dim, kernel_size, heads, depth, num_blocks)
         
         self.fc = nn.Linear(embed_dim, num_classes)
 

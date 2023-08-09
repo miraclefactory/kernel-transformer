@@ -20,7 +20,7 @@ classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(device)
+print(' - Training device currently set to:', device)
 
 model = HierarchicalKernelTransformer(in_channels=3, img_dim=32, embed_dim=64, window_size=4, 
                                       heads=4, depth=4, num_blocks=2).to(device)
@@ -34,13 +34,13 @@ for epoch in range(num_epochs):
     for images, labels in train_loader:
         images = images.to(device)
         labels = labels.to(device)
-        
+
         optimizer.zero_grad()
         outputs = model(images)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        
+
         running_loss += loss.item() * images.size(0)
 
     epoch_loss = running_loss / len(train_set)
@@ -52,12 +52,12 @@ for epoch in range(num_epochs):
         for images, labels in test_loader:
             images = images.to(device)
             labels = labels.to(device)
-            
+
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-        
+
     accuracy = (correct / total) * 100
     print(f'Accuracy: {accuracy}')
 
