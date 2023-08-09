@@ -36,14 +36,15 @@ class KernelAttention(nn.Module):
 
 
 class KernelTransformerBlock(nn.Module):
-    def __init__(self, dim, kernel_size=5, stride=1, padding=2):
+    def __init__(self, dim, kernel_size=5, heads=8, stride=1, padding=2):
         super(KernelTransformerBlock, self).__init__()
 
         self.kernel_size = kernel_size
+        self.heads = heads
         self.stride = stride
         self.padding = padding
 
-        self.attention = KernelAttention(dim)
+        self.attention = KernelAttention(dim, heads=heads)
         self.mlp = nn.Sequential(
             nn.Linear(dim, dim*4),
             nn.GELU(),
