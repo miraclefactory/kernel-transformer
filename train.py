@@ -10,11 +10,11 @@ transform = transforms.Compose(
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 train_set = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=4,
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=128,
                                           shuffle=True, num_workers=2)
 test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=4,
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=128,
                                          shuffle=False, num_workers=2)
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -22,10 +22,10 @@ classes = ('plane', 'car', 'bird', 'cat',
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(' - Training device currently set to:', device)
 
-model = KernelTransformer(in_channels=3, emb_size=64, patch_size=4, 
-                          num_blocks=4, heads=8, num_classes=10).to(device)
+model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
+                          num_blocks=12, heads=8, num_classes=10).to(device)
 criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 num_epochs = 100
 

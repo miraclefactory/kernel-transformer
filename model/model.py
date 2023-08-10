@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from math import sqrt
+from utils import count_parameters
 
 
 class PatchEmbedding(nn.Module):
@@ -59,21 +59,34 @@ class KernelTransformerBlock(nn.Module):
         self.pos_emb = PositionalEmbedding(dim, dim)
 
     def forward(self, x):
-        x = x + self.attention(self.norm1(x))
-        x = x + self.mlp(self.norm2(x))
-        return self.pos_emb(x)
+        attn_out = self.attention(self.norm1(x))
+        x = x + attn_out  # Residual connection here
+
+        mlp_out = self.mlp(self.norm2(x))
+        x = x + mlp_out  # Residual connection here
+        
+        return x + self.pos_emb(x) 
 
 
 class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads, num_classes):
         super(KernelTransformer, self).__init__()
         self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
+        # self.pos_embed = PositionalEmbedding(emb_size, emb_size)
         self.blocks = nn.ModuleList([KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)])
         self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
 
     def forward(self, x):
         x = self.patch_embed(x)
+        # x = self.pos_embed(x)
         for blk in self.blocks:
             x = blk(x)
         x = x.mean(dim=1)  # Global average pooling
         return self.classifier(x)
+
+
+if __name__ == '__main__':
+    model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
+                              num_blocks=12, heads=8, num_classes=10)
+    print(model)
+    print(f"Number of parameters: {count_parameters(model):,}")
