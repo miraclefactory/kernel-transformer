@@ -1,7 +1,7 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
-from model.model import HierarchicalKernelTransformer
+from model.model import KernelTransformer
 
 
 # Data augmentation and normalization
@@ -22,8 +22,7 @@ classes = ('plane', 'car', 'bird', 'cat',
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(' - Training device currently set to:', device)
 
-model = HierarchicalKernelTransformer(in_channels=3, img_dim=32, embed_dim=64, kernel_size=7, 
-                                      heads=4, depth=4, num_blocks=2).to(device)
+model = KernelTransformer(in_channels=3, emb_size=64, patch_size=4, num_blocks=4, heads=8).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 num_epochs = 100
