@@ -26,6 +26,7 @@ model = KernelTransformer(in_channels=3, emb_size=64, patch_size=4,
                           num_blocks=4, heads=8, num_classes=10).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 num_epochs = 100
 
 for epoch in range(num_epochs):
@@ -60,5 +61,7 @@ for epoch in range(num_epochs):
 
     accuracy = (correct / total) * 100
     print(f'Accuracy: {accuracy}')
+
+    scheduler.step()
 
 print('Finished Training')
