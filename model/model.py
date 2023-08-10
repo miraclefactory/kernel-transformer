@@ -52,19 +52,20 @@ class KernelTransformerBlock(nn.Module):
         )
 
     def forward(self, x):
-        B, C, H, W = x.shape
+        # B, C, H, W = x.shape
+        B, C, L = x.shape
 
-        # Extract patches (our "windows") from the image
-        windows = F.unfold(x, self.kernel_size, stride=self.stride, padding=self.padding)
-        windows = windows.permute(0, 2, 1).reshape(B, -1, C)
+        # Extract patches (our "kernel") from the image
+        kernel = F.unfold(x, self.kernel_size, stride=self.stride, padding=self.padding)
+        kernel = kernel.permute(0, 2, 1).reshape(B, -1, C)
 
         # Apply the attention to each window
-        attended_windows = self.attention(windows)
+        attended_kernel = self.attention(kernel)
 
-        # Here, we might want to fold the windows back to the spatial form. 
+        # Here, we might want to fold the kernel back to the spatial form. 
         # For simplicity, this is not done in this example, but in a real-world scenario, you'd fold it back.
 
-        return self.mlp(attended_windows)
+        return self.mlp(attended_kernel)
 
 
 class PatchMerging(nn.Module):
