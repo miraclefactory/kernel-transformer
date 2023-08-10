@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import count_parameters
+# from utils import count_parameters
 
 
 class PatchEmbedding(nn.Module):
@@ -62,7 +62,7 @@ class KernelTransformerBlock(nn.Module):
 
     def forward(self, x):
         nor = self.norm1(x)
-        attn_out = self.attention(nor, nor, nor)
+        attn_out, _ = self.attention(nor, nor, nor)
         attn_out = self.dropout(attn_out)
         x = x + attn_out
 
@@ -90,8 +90,8 @@ class KernelTransformer(nn.Module):
         return self.classifier(x)
 
 
-if __name__ == '__main__':
-    model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
-                              num_blocks=12, heads=8, num_classes=10)
-    print(model)
-    print(f"Number of parameters: {count_parameters(model):,}")
+# if __name__ == '__main__':
+#     model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
+#                               num_blocks=12, heads=8, num_classes=10)
+#     print(model)
+#     print(f"Number of parameters: {count_parameters(model):,}")
