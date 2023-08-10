@@ -22,7 +22,8 @@ classes = ('plane', 'car', 'bird', 'cat',
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(' - Training device currently set to:', device)
 
-model = KernelTransformer(in_channels=3, emb_size=64, patch_size=4, num_blocks=4, heads=8).to(device)
+model = KernelTransformer(in_channels=3, emb_size=64, patch_size=4, 
+                          num_blocks=4, heads=8, num_classes=10).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 num_epochs = 100

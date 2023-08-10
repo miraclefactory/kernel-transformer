@@ -65,13 +65,15 @@ class KernelTransformerBlock(nn.Module):
 
 
 class KernelTransformer(nn.Module):
-    def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads):
+    def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads, num_classes):
         super(KernelTransformer, self).__init__()
         self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
         self.blocks = nn.ModuleList([KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)])
+        self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
 
     def forward(self, x):
         x = self.patch_embed(x)
         for blk in self.blocks:
             x = blk(x)
-        return x
+        x = x.mean(dim=1)  # Global average pooling
+        return self.classifier(x)
