@@ -50,7 +50,8 @@ class KernelTransformerBlock(nn.Module):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
         # self.attention = KernelAttention(dim, heads=heads)
-        self.attention = nn.MultiheadAttention(dim, heads, dropout=0.1)
+        self.attention = nn.MultiheadAttention(dim, heads)
+        self.dropout = nn.Dropout(0.1)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
             nn.Linear(dim, dim*4),
@@ -60,13 +61,16 @@ class KernelTransformerBlock(nn.Module):
         self.pos_emb = PositionalEmbedding(dim, dim)
 
     def forward(self, x):
-        attn_out = self.attention(self.norm1(x))
-        x = x + attn_out  # Residual connection here
+        nor = self.norm1(x)
+        attn_out = self.attention(nor, nor, nor)
+        attn_out = self.dropout(attn_out)
+        x = x + attn_out
 
-        mlp_out = self.mlp(self.norm2(x))
-        x = x + mlp_out  # Residual connection here
+        nor = self.norm2(x)
+        mlp_out = self.mlp(nor)
+        x = x + mlp_out
         
-        return self.pos_emb(x) 
+        return self.pos_emb(x)
 
 
 class KernelTransformer(nn.Module):
