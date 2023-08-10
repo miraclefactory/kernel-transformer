@@ -65,7 +65,7 @@ class KernelTransformerBlock(nn.Module):
         mlp_out = self.mlp(self.norm2(x))
         x = x + mlp_out  # Residual connection here
         
-        return x + self.pos_emb(x) 
+        return self.pos_emb(x) 
 
 
 class KernelTransformer(nn.Module):
