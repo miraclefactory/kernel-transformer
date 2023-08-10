@@ -49,7 +49,8 @@ class KernelTransformerBlock(nn.Module):
     def __init__(self, dim, heads=8):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
-        self.attention = KernelAttention(dim, heads=heads)
+        # self.attention = KernelAttention(dim, heads=heads)
+        self.attention = nn.MultiheadAttention(dim, heads, dropout=0.1)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
             nn.Linear(dim, dim*4),
