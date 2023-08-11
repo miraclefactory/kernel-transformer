@@ -60,7 +60,7 @@ class KernelTransformerBlock(nn.Module):
             nn.Linear(dim * mlp_ratio, dim),
             nn.Dropout(drop)
         )
-        self.pos_emb = PositionalEmbedding(dim, dim)
+        # self.pos_emb = PositionalEmbedding(dim, dim)
 
     def forward(self, x):
         nor = self.norm1(x)
@@ -73,14 +73,15 @@ class KernelTransformerBlock(nn.Module):
         mlp_out = self.mlp(nor)
         x = x + mlp_out
         
-        return self.pos_emb(x)
+        # return self.pos_emb(x)
+        return x
 
 
 class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads, num_classes):
         super(KernelTransformer, self).__init__()
         self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
-        # self.pos_embed = PositionalEmbedding(emb_size, emb_size)
+        self.pos_embed = PositionalEmbedding(emb_size, emb_size)
         self.blocks = nn.ModuleList(
             [KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)]
         )
@@ -88,7 +89,7 @@ class KernelTransformer(nn.Module):
 
     def forward(self, x):
         x = self.patch_embed(x)
-        # x = self.pos_embed(x)
+        x = self.pos_embed(x)
         for blk in self.blocks:
             x = blk(x)
         x = x.mean(dim=1)  # Global average pooling
