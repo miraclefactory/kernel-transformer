@@ -33,7 +33,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(' - Training device currently set to:', device)
 
 model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
-                          num_blocks=12, heads=8, num_classes=10).to(device)
+                          num_blocks=6, heads=8, num_classes=10).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 num_epochs = 100
 optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-5)
