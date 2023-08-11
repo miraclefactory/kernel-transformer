@@ -38,7 +38,7 @@ class KernelAttention(nn.Module):
 
 class SlidingKernelAttention(nn.Module):
     def __init__(self, dim, heads=8, kernel_size=4, stride=2):
-        super(KernelAttention, self).__init__()
+        super(SlidingKernelAttention, self).__init__()
         self.heads = heads
         self.scale = dim ** -0.5
         self.kernel_size = kernel_size
