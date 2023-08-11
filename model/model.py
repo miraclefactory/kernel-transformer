@@ -82,6 +82,7 @@ class KernelTransformer(nn.Module):
         super(KernelTransformer, self).__init__()
         self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
         self.pos_embed = PositionalEmbedding(emb_size, emb_size)
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, emb_size))
         self.blocks = nn.ModuleList(
             [KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)]
         )
@@ -90,6 +91,8 @@ class KernelTransformer(nn.Module):
     def forward(self, x):
         x = self.patch_embed(x)
         x = self.pos_embed(x)
+        cls_token = self.cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_token, x), dim=1)
         for blk in self.blocks:
             x = blk(x)
         x = x.mean(dim=1)  # Global average pooling

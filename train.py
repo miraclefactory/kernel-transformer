@@ -20,11 +20,11 @@ transform = transforms.Compose([
 ])
 train_set = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=256,
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=128,
                                           shuffle=True, num_workers=2)
 test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=256,
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=128,
                                          shuffle=False, num_workers=2)
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -37,7 +37,7 @@ model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2,
 criterion = torch.nn.CrossEntropyLoss()
 num_epochs = 100
 optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-5)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.98)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 # scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=3e-4,
 #                                                 steps_per_epoch=len(train_loader),
 #                                                 epochs=num_epochs,
