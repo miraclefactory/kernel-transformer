@@ -26,7 +26,7 @@ model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2,
                           num_blocks=12, heads=8, num_classes=10).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.98)
 num_epochs = 100
 
 for epoch in range(num_epochs):

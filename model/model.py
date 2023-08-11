@@ -46,23 +46,26 @@ class PositionalEmbedding(nn.Module):
 
 
 class KernelTransformerBlock(nn.Module):
-    def __init__(self, dim, heads=8):
+    def __init__(self, dim, heads=8, mlp_ratio=4, drop=0.):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
-        # self.attention = KernelAttention(dim, heads=heads)
-        self.attention = nn.MultiheadAttention(dim, heads)
-        self.dropout = nn.Dropout(0.1)
+        self.attention = KernelAttention(dim, heads=heads)
+        # self.attention = nn.MultiheadAttention(dim, heads)
+        self.dropout = nn.Dropout(drop)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
-            nn.Linear(dim, dim*4),
+            nn.Linear(dim, dim * mlp_ratio),
             nn.GELU(),
-            nn.Linear(dim*4, dim)
+            nn.Dropout(drop),
+            nn.Linear(dim * mlp_ratio, dim),
+            nn.Dropout(drop)
         )
         self.pos_emb = PositionalEmbedding(dim, dim)
 
     def forward(self, x):
         nor = self.norm1(x)
-        attn_out, _ = self.attention(nor, nor, nor)
+        attn_out = self.attention(nor)
+        # attn_out, _ = self.attention(nor, nor, nor)
         attn_out = self.dropout(attn_out)
         x = x + attn_out
 
@@ -78,7 +81,9 @@ class KernelTransformer(nn.Module):
         super(KernelTransformer, self).__init__()
         self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
         # self.pos_embed = PositionalEmbedding(emb_size, emb_size)
-        self.blocks = nn.ModuleList([KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)])
+        self.blocks = nn.ModuleList(
+            [KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)]
+        )
         self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
 
     def forward(self, x):
