@@ -34,6 +34,40 @@ class KernelAttention(nn.Module):
         out = attn @ v
         out = out.transpose(1, 2).reshape(B, L, C)
         return self.to_out(out)
+    
+
+class SlidingKernelAttention(nn.Module):
+    def __init__(self, dim, heads=8, kernel_size=4, stride=2):
+        super(KernelAttention, self).__init__()
+        self.heads = heads
+        self.scale = dim ** -0.5
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
+        self.to_out = nn.Linear(dim, dim)
+
+    def forward(self, x):
+        B, L, C = x.shape
+        out = torch.zeros_like(x)
+
+        for i in range(0, L - self.kernel_size + 1, self.stride):
+            x_view = x[:, i:i+self.kernel_size, :]
+            attn_out = self.comp_attention(x_view)
+            out[:, i:i+self.kernel_size, :] += attn_out
+        
+        return out
+    
+    def comp_attention(self, x_view):
+        B, L, C = x_view.shape
+        qkv = self.to_qkv(x_view).chunk(3, dim=-1)
+        q, k, v = map(lambda t: t.reshape(B, L, self.heads, C // self.heads).permute(0, 2, 1, 3), qkv)
+        
+        dots = (q @ k.transpose(-1, -2)) * self.scale
+        attn = dots.softmax(dim=-1)
+        
+        out = attn @ v
+        out = out.transpose(1, 2).reshape(B, L, C)
+        return self.to_out(out)
 
 
 class PositionalEmbedding(nn.Module):
@@ -49,8 +83,9 @@ class KernelTransformerBlock(nn.Module):
     def __init__(self, dim, heads=8, mlp_ratio=4, drop=0.1):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
-        self.attention = KernelAttention(dim, heads=heads)
+        # self.attention = KernelAttention(dim, heads=heads)
         # self.attention = nn.MultiheadAttention(dim, heads)
+        self.attention = SlidingKernelAttention(dim, heads=heads)
         self.dropout = nn.Dropout(drop)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
