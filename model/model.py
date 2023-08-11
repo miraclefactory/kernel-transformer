@@ -46,7 +46,7 @@ class PositionalEmbedding(nn.Module):
 
 
 class KernelTransformerBlock(nn.Module):
-    def __init__(self, dim, heads=8, mlp_ratio=4, drop=0.):
+    def __init__(self, dim, heads=8, mlp_ratio=4, drop=0.1):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
         self.attention = KernelAttention(dim, heads=heads)

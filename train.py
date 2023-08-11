@@ -5,15 +5,25 @@ from model.model import KernelTransformer
 
 
 # Data augmentation and normalization
-transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+transform_train = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomRotation(degrees=15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+    transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
 train_set = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
+                                        download=True, transform=transform_train)
 train_loader = torch.utils.data.DataLoader(train_set, batch_size=128,
                                           shuffle=True, num_workers=2)
 test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform)
+                                       download=True, transform=transform_test)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=128,
                                          shuffle=False, num_workers=2)
 classes = ('plane', 'car', 'bird', 'cat',
@@ -25,9 +35,13 @@ print(' - Training device currently set to:', device)
 model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
                           num_blocks=12, heads=8, num_classes=10).to(device)
 criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.98)
 num_epochs = 100
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-5)
+# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.98)
+scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=3e-4,
+                                                steps_per_epoch=len(train_loader),
+                                                epochs=num_epochs,
+                                                pct_start=0.05)
 
 for epoch in range(num_epochs):
     model.train()
