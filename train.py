@@ -26,8 +26,8 @@ test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=128,
                                          shuffle=False, num_workers=2)
-classes = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+classes = ('plane', 'car', 'bird', 'cat', 'deer', 
+           'dog', 'frog', 'horse', 'ship', 'truck')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(' - Training device currently set to:', device)

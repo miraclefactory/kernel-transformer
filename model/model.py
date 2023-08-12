@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from utils import count_parameters
+from utils import count_parameters
 
 
 class PatchEmbedding(nn.Module):
@@ -80,12 +80,13 @@ class PositionalEmbedding(nn.Module):
 
 
 class KernelTransformerBlock(nn.Module):
-    def __init__(self, dim, heads=8, mlp_ratio=4, drop=0.1):
+    def __init__(self, dim, heads=8, kernel_size=8, stride=4, mlp_ratio=4, drop=0.1):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
         # self.attention = KernelAttention(dim, heads=heads)
         # self.attention = nn.MultiheadAttention(dim, heads)
-        self.attention = SlidingKernelAttention(dim, heads=heads)
+        self.attention = SlidingKernelAttention(dim, heads=heads, 
+                                                kernel_size=kernel_size, stride=stride)
         self.dropout = nn.Dropout(drop)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
@@ -118,8 +119,24 @@ class KernelTransformer(nn.Module):
         self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
         self.pos_embed = PositionalEmbedding(emb_size, emb_size)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, emb_size))
+        self.small_blocks = num_blocks // 3
+        self.medium_blocks = num_blocks // 3
+        self.large_blocks = num_blocks - self.small_blocks - self.medium_blocks
+        # self.blocks = nn.ModuleList(
+        #     [KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)]
+        # )
+        # self.blocks = nn.ModuleList(
+        #     [KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2)] * self.small_blocks +
+        #     [KernelTransformerBlock(emb_size, heads=6, kernel_size=8, stride=4)] * self.medium_blocks +
+        #     [KernelTransformerBlock(emb_size, heads=8, kernel_size=16, stride=8)] * self.large_blocks
+        # )
         self.blocks = nn.ModuleList(
-            [KernelTransformerBlock(emb_size, heads) for _ in range(num_blocks)]
+            [KernelTransformerBlock(emb_size, heads=6, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size, heads=6, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=4),
+             KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=4),
+             KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=4),
+             KernelTransformerBlock(emb_size, heads=10, kernel_size=16, stride=8)]
         )
         self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
 
@@ -136,6 +153,6 @@ class KernelTransformer(nn.Module):
 
 # if __name__ == '__main__':
 #     model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
-#                               num_blocks=12, heads=8, num_classes=10)
+#                               num_blocks=6, heads=8, num_classes=10)
 #     print(model)
 #     print(f"Number of parameters: {count_parameters(model):,}")
