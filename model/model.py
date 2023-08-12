@@ -131,12 +131,12 @@ class KernelTransformer(nn.Module):
         #     [KernelTransformerBlock(emb_size, heads=8, kernel_size=16, stride=8)] * self.large_blocks
         # )
         self.blocks = nn.ModuleList(
-            [KernelTransformerBlock(emb_size, heads=6, kernel_size=4, stride=2),
-             KernelTransformerBlock(emb_size, heads=6, kernel_size=4, stride=2),
+            [KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
              KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=4),
              KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=4),
              KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=4),
-             KernelTransformerBlock(emb_size, heads=10, kernel_size=16, stride=8)]
+             KernelTransformerBlock(emb_size, heads=8, kernel_size=16, stride=8)]
         )
         self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
 
