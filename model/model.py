@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import count_parameters
+# from utils import count_parameters
 
 
 class PatchEmbedding(nn.Module):
