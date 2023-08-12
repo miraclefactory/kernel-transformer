@@ -5,4 +5,4 @@ def log_csv(epoch, acc, loss):
     if not os.path.exists('log'):
         os.makedirs('log')
     with open('log/kt_log.csv', 'a') as f:
-        f.write('{},{},{}'.format(epoch, acc, loss))
+        f.write('{},{},{}\n'.format(epoch, acc, loss))
