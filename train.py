@@ -36,7 +36,7 @@ model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2,
                           num_blocks=6, heads=8, num_classes=10).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 num_epochs = 100
-optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-5)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 # scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=3e-4,
