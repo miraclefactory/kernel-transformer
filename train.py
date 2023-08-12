@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 from model.model import KernelTransformer
+from csv_logger import log_csv
 
 
 # Data augmentation and normalization
@@ -76,6 +77,8 @@ for epoch in range(num_epochs):
 
     accuracy = (correct / total) * 100
     print(f'Accuracy: {accuracy}')
+
+    log_csv(epoch, accuracy, epoch_loss)
 
     scheduler.step()
 
