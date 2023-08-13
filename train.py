@@ -3,6 +3,7 @@ import torchvision
 import torchvision.transforms as transforms
 from model.model import KernelTransformer
 from csv_logger import log_csv
+from tqdm.notebook import tqdm
 
 
 # Data augmentation and normalization
@@ -48,7 +49,8 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
-    for images, labels in train_loader:
+    desc = f'Epoch {epoch+1}/{num_epochs}'
+    for images, labels in tqdm(train_loader, desc=desc):
         images = images.to(device)
         labels = labels.to(device)
 
@@ -75,7 +77,7 @@ for epoch in range(num_epochs):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    accuracy = (correct / total) * 100
+    accuracy = round((correct / total) * 100, 2)
     print(f'Accuracy: {accuracy}')
 
     log_csv(epoch, accuracy, epoch_loss)
