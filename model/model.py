@@ -56,24 +56,39 @@ class SlidingKernelAttention(nn.Module):
     #         out[:, i:i+self.kernel_size, :] += attn_out
         
     #     return out
-
+    
     def forward(self, x):
         B, L, C = x.shape
-        # Extract sliding windows and stack them in a new dimension
-        windows = x.unfold(dimension=1, size=self.kernel_size, step=self.stride)
-        # Reshape windows for attention computation
-        B, num_windows, window_size, C = windows.size()
-        windows = windows.view(B * num_windows, window_size, C)
-        # Compute attention for all windows
-        attn_windows = self.compute_attention(windows)
-        # Reshape back to original format
-        attn_windows = attn_windows.view(B, num_windows, window_size, C)
-        # Aggregate results back to the original sequence shape
         out = torch.zeros_like(x)
-        for i, j in enumerate(range(0, L - self.kernel_size + 1, self.stride)):
-            out[:, j:j+self.kernel_size, :] += attn_windows[:, i, :, :]
-            
+
+        x_unfold = nn.functional.unfold(x.transpose(1, 2), kernel_size=self.kernel_size, 
+                                        stride=self.stride).transpose(1, 2)
+        x_unfold = x_unfold.reshape(B * ((L - self.kernel_size) // self.stride + 1), 
+                                    self.kernel_size, C)
+
+        with nn.parallel.parallel_apply([self.comp_attention] * x_unfold.shape[0], [(x_unfold[i:i+1],) for i in range(x_unfold.shape[0])]) as attn_outs:
+            for i, attn_out in enumerate(attn_outs):
+                out[:, i*self.stride:i*self.stride+self.kernel_size, :] += attn_out.reshape(B, self.kernel_size, C)
+
         return out
+
+    # def forward(self, x):
+    #     B, L, C = x.shape
+    #     # Extract sliding windows and stack them in a new dimension
+    #     windows = x.unfold(dimension=1, size=self.kernel_size, step=self.stride)
+    #     # Reshape windows for attention computation
+    #     B, num_windows, window_size, C = windows.size()
+    #     windows = windows.view(B * num_windows, window_size, C)
+    #     # Compute attention for all windows
+    #     attn_windows = self.compute_attention(windows)
+    #     # Reshape back to original format
+    #     attn_windows = attn_windows.view(B, num_windows, window_size, C)
+    #     # Aggregate results back to the original sequence shape
+    #     out = torch.zeros_like(x)
+    #     for i, j in enumerate(range(0, L - self.kernel_size + 1, self.stride)):
+    #         out[:, j:j+self.kernel_size, :] += attn_windows[:, i, :, :]
+
+    #     return out
     
     def comp_attention(self, x_view):
         B, L, C = x_view.shape
