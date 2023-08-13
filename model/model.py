@@ -45,7 +45,6 @@ class SlidingKernelAttention(nn.Module):
         self.stride = stride
         self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
         self.to_out = nn.Linear(dim, dim)
-        self.parallel = nn.DataParallel(self)
 
     def forward(self, x):
         B, L, C = x.shape
@@ -142,6 +141,7 @@ class KernelTransformer(nn.Module):
              KernelTransformerBlock(emb_size, heads=16, kernel_size=16, stride=8)]
         )
         self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
+        self.parallel = nn.DataParallel(self)
 
     def forward(self, x):
         x = self.patch_embed(x)
