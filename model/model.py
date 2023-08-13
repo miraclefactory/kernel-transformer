@@ -45,6 +45,7 @@ class SlidingKernelAttention(nn.Module):
         self.stride = stride
         self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
         self.to_out = nn.Linear(dim, dim)
+        self.parallel = nn.DataParallel(self)
 
     def forward(self, x):
         B, L, C = x.shape
