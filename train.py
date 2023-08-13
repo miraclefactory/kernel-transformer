@@ -45,12 +45,12 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 #                                                 steps_per_epoch=len(train_loader),
 #                                                 epochs=num_epochs,
 #                                                 pct_start=0.05)
-
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
     desc = f'Epoch {epoch+1}/{num_epochs}'
-    for images, labels in tqdm(train_loader, desc=desc):
+    bar = tqdm(total=len(train_loader), desc=desc)
+    for images, labels in train_loader:
         images = images.to(device)
         labels = labels.to(device)
 
@@ -61,6 +61,10 @@ for epoch in range(num_epochs):
         optimizer.step()
 
         running_loss += loss.item() * images.size(0)
+
+        bar.update(1)
+
+    bar.close()
 
     epoch_loss = running_loss / len(train_set)
     print(f'Epoch {epoch} loss: {epoch_loss}')
