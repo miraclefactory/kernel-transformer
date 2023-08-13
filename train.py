@@ -3,7 +3,7 @@ import torchvision
 import torchvision.transforms as transforms
 from model.model import KernelTransformer
 from csv_logger import log_csv
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 
 # Data augmentation and normalization
@@ -45,11 +45,12 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 #                                                 steps_per_epoch=len(train_loader),
 #                                                 epochs=num_epochs,
 #                                                 pct_start=0.05)
+
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
     desc = f'Epoch {epoch+1}/{num_epochs}'
-    bar = tqdm(total=len(train_loader), desc=desc)
+    bar = tqdm(total=len(train_loader))
     for images, labels in train_loader:
         images = images.to(device)
         labels = labels.to(device)
