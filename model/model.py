@@ -141,7 +141,6 @@ class KernelTransformer(nn.Module):
              KernelTransformerBlock(emb_size, heads=16, kernel_size=16, stride=8)]
         )
         self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
-        self.parallel = nn.DataParallel(self)
 
     def forward(self, x):
         x = self.patch_embed(x)
