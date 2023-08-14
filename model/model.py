@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from einops.layers.torch import Rearrange
 # from utils import count_parameters
 
 
@@ -8,11 +9,16 @@ class PatchEmbedding(nn.Module):
     def __init__(self, in_channels: int, patch_size: int, emb_size: int):
         super(PatchEmbedding, self).__init__()
         self.patch_size = patch_size
-        self.proj = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
+        # self.proj = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_size, p2 = patch_size),
+            nn.Linear(in_channels * patch_size * patch_size, emb_size),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.proj(x)  # [B, emb_size, H', W']
-        return x.flatten(2).transpose(1, 2)  # [B, num_patches, emb_size]
+        # x = self.proj(x)  # [B, emb_size, H', W']
+        # return x.flatten(2).transpose(1, 2)  # [B, num_patches, emb_size]
+        return self.to_patch_embedding(x)
 
 
 class KernelAttention(nn.Module):
@@ -46,49 +52,16 @@ class SlidingKernelAttention(nn.Module):
         self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
         self.to_out = nn.Linear(dim, dim)
 
-    # def forward(self, x):
-    #     B, L, C = x.shape
-    #     out = torch.zeros_like(x)
-
-    #     for i in range(0, L - self.kernel_size + 1, self.stride):
-    #         x_view = x[:, i:i+self.kernel_size, :]
-    #         attn_out = self.comp_attention(x_view)
-    #         out[:, i:i+self.kernel_size, :] += attn_out
-        
-    #     return out
-    
     def forward(self, x):
         B, L, C = x.shape
         out = torch.zeros_like(x)
 
-        x_unfold = nn.functional.unfold(x.transpose(1, 2), kernel_size=self.kernel_size, 
-                                        stride=self.stride).transpose(1, 2)
-        x_unfold = x_unfold.reshape(B * ((L - self.kernel_size) // self.stride + 1), 
-                                    self.kernel_size, C)
-
-        with nn.parallel.parallel_apply([self.comp_attention] * x_unfold.shape[0], [(x_unfold[i:i+1],) for i in range(x_unfold.shape[0])]) as attn_outs:
-            for i, attn_out in enumerate(attn_outs):
-                out[:, i*self.stride:i*self.stride+self.kernel_size, :] += attn_out.reshape(B, self.kernel_size, C)
-
+        for i in range(0, L - self.kernel_size + 1, self.stride):
+            x_view = x[:, i:i+self.kernel_size, :]
+            attn_out = self.comp_attention(x_view)
+            out[:, i:i+self.kernel_size, :] += attn_out
+        
         return out
-
-    # def forward(self, x):
-    #     B, L, C = x.shape
-    #     # Extract sliding windows and stack them in a new dimension
-    #     windows = x.unfold(dimension=1, size=self.kernel_size, step=self.stride)
-    #     # Reshape windows for attention computation
-    #     B, num_windows, window_size, C = windows.size()
-    #     windows = windows.view(B * num_windows, window_size, C)
-    #     # Compute attention for all windows
-    #     attn_windows = self.compute_attention(windows)
-    #     # Reshape back to original format
-    #     attn_windows = attn_windows.view(B, num_windows, window_size, C)
-    #     # Aggregate results back to the original sequence shape
-    #     out = torch.zeros_like(x)
-    #     for i, j in enumerate(range(0, L - self.kernel_size + 1, self.stride)):
-    #         out[:, j:j+self.kernel_size, :] += attn_windows[:, i, :, :]
-
-    #     return out
     
     def comp_attention(self, x_view):
         B, L, C = x_view.shape
@@ -113,7 +86,7 @@ class PositionalEmbedding(nn.Module):
 
 
 class KernelTransformerBlock(nn.Module):
-    def __init__(self, dim, heads=8, kernel_size=8, stride=4, mlp_ratio=4, drop=0.1):
+    def __init__(self, dim, heads=8, kernel_size=8, stride=4, mlp_ratio=2, drop=0.1):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
         # self.attention = KernelAttention(dim, heads=heads)
@@ -187,7 +160,7 @@ class KernelTransformer(nn.Module):
 
 
 # if __name__ == '__main__':
-#     model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
+#     model = KernelTransformer(in_channels=3, emb_size=512, patch_size=2, 
 #                               num_blocks=6, heads=8, num_classes=10)
 #     print(model)
 #     print(f"Number of parameters: {count_parameters(model):,}")
