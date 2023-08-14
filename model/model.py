@@ -248,7 +248,7 @@ class KernelTransformer(nn.Module):
         x = self.pos_embed(x)
         # cls_token = self.cls_token.expand(x.shape[0], -1, -1)
         # x = torch.cat((cls_token, x), dim=1)
-        cls_token = self.cls_token.expand(x.shape[0], -1, -1, -1)
+        cls_token = self.cls_token.expand(x.shape[0], -1, -1, x.shape[-1])
         x = torch.cat((cls_token, x), dim=2)
         for blk in self.blocks:
             x = blk(x)
