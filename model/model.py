@@ -12,13 +12,23 @@ class PatchEmbedding(nn.Module):
         # self.proj = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
         self.to_patch_embedding = nn.Sequential(
             Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_size, p2 = patch_size),
-            nn.Linear(in_channels*patch_size*patch_size, emb_size),
+            nn.Linear(in_channels * patch_size * patch_size, emb_size),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x = self.proj(x)  # [B, emb_size, H', W']
         # return x.flatten(2).transpose(1, 2)  # [B, num_patches, emb_size]
         return self.to_patch_embedding(x)
+
+
+class PositionalEmbedding(nn.Module):
+    def __init__(self, emb_size, max_length):
+        super(PositionalEmbedding, self).__init__()
+        # self.pos_emb = nn.Parameter(torch.zeros(1, max_length, emb_size))
+        self.pos_embedding = nn.Parameter(torch.randn(1, max_length, emb_size))
+
+    def forward(self, x):
+        return x + self.pos_emb
 
 
 class KernelAttention(nn.Module):
@@ -76,15 +86,6 @@ class SlidingKernelAttention(nn.Module):
         return self.to_out(out)
 
 
-class PositionalEmbedding(nn.Module):
-    def __init__(self, emb_size, max_length):
-        super(PositionalEmbedding, self).__init__()
-        self.pos_emb = nn.Parameter(torch.zeros(1, max_length, emb_size))
-
-    def forward(self, x):
-        return x + self.pos_emb
-
-
 class KernelTransformerBlock(nn.Module):
     def __init__(self, dim, heads=8, kernel_size=8, stride=4, mlp_ratio=2, drop=0.1):
         super(KernelTransformerBlock, self).__init__()
@@ -123,7 +124,8 @@ class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads, num_classes):
         super(KernelTransformer, self).__init__()
         self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
-        self.pos_embed = PositionalEmbedding(emb_size, emb_size)
+        self.num_patches = (emb_size // patch_size) ** 2
+        self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, emb_size))
         self.small_blocks = num_blocks // 3
         self.medium_blocks = num_blocks // 3
