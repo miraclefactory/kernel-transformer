@@ -198,17 +198,30 @@ class KernelTransformerBlock(nn.Module):
         # self.pos_emb = PositionalEmbedding(dim, dim)
 
     def forward(self, x):
-        nor = self.norm1(x)
+        # nor = self.norm1(x)
+        nor = self.layer_norm_2d(x, self.norm1)
         attn_out = self.attention(nor)
         # attn_out, _ = self.attention(nor, nor, nor)
         attn_out = self.dropout(attn_out)
         x = x + attn_out
 
-        nor = self.norm2(x)
+        # nor = self.norm2(x)
+        nor = self.layer_norm_2d(x, self.norm2)
         mlp_out = self.mlp(nor)
         x = x + mlp_out
         
         # return self.pos_emb(x)
+        return x
+    
+    def layer_norm_2d(x, norm_layer):
+        """
+        Applies LayerNorm to a tensor of shape [B, C, H, W].
+        Reshapes to [B, H*W, C] for normalization and then reshapes back.
+        """
+        B, C, H, W = x.size()
+        x = x.permute(0, 2, 3, 1).contiguous().view(B, H*W, C)  # Reshape to [B, H*W, C]
+        x = norm_layer(x)  # Apply LayerNorm
+        x = x.view(B, H, W, C).permute(0, 3, 1, 2)  # Reshape back to [B, C, H, W]
         return x
 
 
