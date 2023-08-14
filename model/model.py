@@ -36,22 +36,32 @@ class PositionalEmbedding(nn.Module):
 
 
 class PositionalEmbedding2D(nn.Module):
-    def __init__(self, emb_size: int, height: int, width: int):
+    def __init__(self, dim: int, h: int, w: int):
         super(PositionalEmbedding2D, self).__init__()
-        self.row_embed = nn.Embedding(height, emb_size)
-        self.col_embed = nn.Embedding(width, emb_size)
-        self.height = height
-        self.width = width
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        rows = torch.arange(self.height, device=x.device)
-        cols = torch.arange(self.width, device=x.device)
+        
+        self.row_embed = nn.Embedding(h, dim // 2)
+        self.col_embed = nn.Embedding(w, dim // 2)
+        
+        self.h, self.w = h, w
+        self.dim = dim
+        
+    def forward(self, x):
+        # x shape: [B, C, H, W]
+        
+        # Create positional indices
+        rows = torch.arange(0, self.h, device=x.device).unsqueeze(-1)
+        cols = torch.arange(0, self.w, device=x.device).unsqueeze(0)
+        
         row_embeds = self.row_embed(rows)
         col_embeds = self.col_embed(cols)
-
-        pos_embed = row_embeds[:, :, None] + col_embeds[:, None, :]
-        pos_embed = pos_embed.permute(2, 0, 1).unsqueeze(0).repeat(x.size(0), 1, 1, 1)
-
+        
+        # Combine row and column embeddings to create a grid
+        pos_embed = torch.cat([row_embeds.expand(self.h, self.w, self.dim // 2), 
+                               col_embeds.expand(self.h, self.w, self.dim // 2)], dim=2)  # [H, W, dim]
+        
+        # Reshape to match the shape of x
+        pos_embed = pos_embed.permute(2, 0, 1).unsqueeze(0).expand(x.shape[0], self.dim, self.h, self.w)
+        
         return x + pos_embed
 
 
@@ -205,7 +215,7 @@ class KernelTransformerBlock(nn.Module):
 class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads, num_classes):
         super(KernelTransformer, self).__init__()
-        self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
+        self.patch_embed = PatchEmbedding2D(in_channels, patch_size, emb_size)
         # self.num_patches = (emb_size // patch_size) ** 2
         # self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
         grid_size = 32 // patch_size
