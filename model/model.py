@@ -12,7 +12,7 @@ class PatchEmbedding(nn.Module):
         # self.proj = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
         self.to_patch_embedding = nn.Sequential(
             Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_size, p2 = patch_size),
-            nn.Linear(in_channels * patch_size * patch_size, emb_size),
+            nn.Linear(in_channels*patch_size*patch_size, emb_size),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
