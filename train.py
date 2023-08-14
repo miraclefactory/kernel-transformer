@@ -35,7 +35,7 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(' - Training device currently set to:', device)
 
-model = KernelTransformer(in_channels=3, emb_size=256, patch_size=2, 
+model = KernelTransformer(in_channels=3, emb_size=512, patch_size=2, 
                           num_blocks=6, heads=8, num_classes=10).to(device)
 model = nn.DataParallel(model)
 criterion = torch.nn.CrossEntropyLoss()
