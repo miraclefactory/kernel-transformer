@@ -246,12 +246,16 @@ class KernelTransformer(nn.Module):
     def forward(self, x):
         x = self.patch_embed(x)
         x = self.pos_embed(x)
-        cls_token = self.cls_token.expand(x.shape[0], -1, -1)
-        x = torch.cat((cls_token, x), dim=1)
+        # cls_token = self.cls_token.expand(x.shape[0], -1, -1)
+        # x = torch.cat((cls_token, x), dim=1)
+        cls_token = self.cls_token.expand(x.shape[0], -1, -1, -1)
+        x = torch.cat((cls_token, x), dim=2)
         for blk in self.blocks:
             x = blk(x)
-        x = x.mean(dim=[2,3])  # Global average pooling
-        return self.classifier(x)
+        # x = x.mean(dim=[2,3])  # Global average pooling
+        cls_output = x[:, :, 0, 0]
+        # return self.classifier(x)
+        return self.classifier(cls_output)
 
 
 # if __name__ == '__main__':
