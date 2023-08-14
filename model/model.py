@@ -213,7 +213,7 @@ class KernelTransformerBlock(nn.Module):
         # return self.pos_emb(x)
         return x
     
-    def layer_norm_2d(x, norm_layer):
+    def layer_norm_2d(self, x, norm_layer):
         """
         Applies LayerNorm to a tensor of shape [B, C, H, W].
         Reshapes to [B, H*W, C] for normalization and then reshapes back.
