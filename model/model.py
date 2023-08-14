@@ -220,7 +220,7 @@ class KernelTransformer(nn.Module):
         # self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
         grid_size = 32 // patch_size
         self.pos_embed = PositionalEmbedding2D(emb_size, grid_size, grid_size)
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, emb_size))
+        self.cls_token = nn.Parameter(torch.zeros(1, emb_size, 1, 1))
         self.small_blocks = num_blocks // 3
         self.medium_blocks = num_blocks // 3
         self.large_blocks = num_blocks - self.small_blocks - self.medium_blocks
