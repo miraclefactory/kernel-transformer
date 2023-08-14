@@ -113,17 +113,17 @@ class KernelAttention(nn.Module):
         
 #         return out
     
-#     def comp_attention(self, x_view):
-#         B, L, C = x_view.shape
-#         qkv = self.to_qkv(x_view).chunk(3, dim=-1)
-#         q, k, v = map(lambda t: t.reshape(B, L, self.heads, C // self.heads).permute(0, 2, 1, 3), qkv)
+    # def comp_attention(self, x_view):
+    #     B, L, C = x_view.shape
+    #     qkv = self.to_qkv(x_view).chunk(3, dim=-1)
+    #     q, k, v = map(lambda t: t.reshape(B, L, self.heads, C // self.heads).permute(0, 2, 1, 3), qkv)
         
-#         dots = (q @ k.transpose(-1, -2)) * self.scale
-#         attn = dots.softmax(dim=-1)
+    #     dots = (q @ k.transpose(-1, -2)) * self.scale
+    #     attn = dots.softmax(dim=-1)
         
-#         out = attn @ v
-#         out = out.transpose(1, 2).reshape(B, L, C)
-#         return self.to_out(out)
+    #     out = attn @ v
+    #     out = out.transpose(1, 2).reshape(B, L, C)
+    #     return self.to_out(out)
 
 
 class SlidingKernelAttention(nn.Module):
@@ -157,24 +157,25 @@ class SlidingKernelAttention(nn.Module):
         B, C, H, W = x.shape
         out = torch.zeros_like(x)
 
-        # Use unfold to extract sliding windows (2D kernels) from the 2D patch grid
-        x_unfold = nn.functional.unfold(x, kernel_size=self.kernel_size, 
-                                        stride=self.stride).permute(0, 2, 1).view(B, -1, C, self.kernel_size, self.kernel_size)
-        
-        # Move the kernel dimensions to the end
-        x_unfold = x_unfold.permute(0, 2, 3, 4, 1).reshape(B*C*self.kernel_size*self.kernel_size, -1, self.kernel_size*self.kernel_size)
-        
-        # Compute attention for each kernel position
+        # Extract sliding windows
+        x_unfold = nn.functional.unfold(x, kernel_size=self.kernel_size, stride=self.stride)
+
+        # Reshape to treat each kernel as an independent sequence for attention
+        L = x_unfold.shape[-1]  # Number of sliding windows per image
+        x_unfold = x_unfold.permute(0, 2, 1).reshape(B * L, C, self.kernel_size * self.kernel_size)
+        x_unfold = x_unfold.permute(0, 2, 1).flatten(0, 1)
+
+        # Compute attention
         attn_out = self.comp_attention(x_unfold)
-        
-        # Reshape the attention output to match the original shape
-        attn_out = attn_out.view(B, C, self.kernel_size, self.kernel_size, H - self.kernel_size + 1, W - self.kernel_size + 1)
-        
-        # Aggregate the results to produce the final attention output
+
+        # Reshape the attention output to match the spatial arrangement
+        attn_out = attn_out.view(B, L, C, self.kernel_size, self.kernel_size)
+
+        # Aggregate the results
         for i in range(self.kernel_size):
             for j in range(self.kernel_size):
-                out[:, :, i:H-self.kernel_size+1+i, j:W-self.kernel_size+1+j] += attn_out[:, :, i, j]
-        
+                out[:, :, i:H-self.kernel_size+1+i, j:W-self.kernel_size+1+j] += attn_out[:, :, :, i, j]
+
         return out
 
 
