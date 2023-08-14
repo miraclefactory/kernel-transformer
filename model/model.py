@@ -117,12 +117,12 @@ class KernelAttention(nn.Module):
 
 
 class SlidingKernelAttention(nn.Module):
-    def __init__(self, dim: int, kernel_size: int = 2, stride: int = 1, head: int = 8, dropout: float = 0.1):
+    def __init__(self, dim: int, kernel_size: int = 2, stride: int = 1, heads: int = 8, dropout: float = 0.1):
         super(SlidingKernelAttention, self).__init__()
-        self.head = head
+        self.head = heads
         self.kernel_size = kernel_size
         self.stride = stride
-        self.scale = (dim // head) ** -0.5
+        self.scale = (dim // heads) ** -0.5
         
         # Define the QKV projection layer
         self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
