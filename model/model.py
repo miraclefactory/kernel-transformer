@@ -122,11 +122,14 @@ class SlidingKernelAttention(nn.Module):
 
 class SlidingKernelAttention2D(nn.Module):
     def __init__(self, dim: int, kernel_size: int = 2, stride: int = 1, heads: int = 8, dropout: float = 0.1):
-        super(SlidingKernelAttention, self).__init__()
+        super(SlidingKernelAttention2D, self).__init__()
         self.heads = heads
         self.kernel_size = kernel_size
         self.stride = stride
         self.scale = (dim // heads) ** -0.5
+
+        self.rel_embed_h = nn.Parameter(torch.randn(kernel_size, dim // heads))
+        self.rel_embed_w = nn.Parameter(torch.randn(kernel_size, dim // heads))
         
         # Define the QKV projection layer
         self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
@@ -142,11 +145,22 @@ class SlidingKernelAttention2D(nn.Module):
         q, k, v = map(lambda t: t.reshape(B, L, self.heads, C // self.heads).permute(0, 2, 1, 3), qkv)
         
         dots = (q @ k.transpose(-1, -2)) * self.scale
+
+        h_bias = self.relative_positional_bias(q, self.rel_embed_h)
+        w_bias = self.relative_positional_bias(q, self.rel_embed_w)
+        dots += h_bias + w_bias.transpose(-1, -2)
+
         attn = dots.softmax(dim=-1)
         
         out = attn @ v
         out = out.transpose(1, 2).reshape(B, L, C)
         return self.to_out(out)
+    
+    def relative_positional_bias(self, q, rel_embed):
+        B, H, L, C = q.shape
+        scores = torch.einsum('bhlc,md->bhlmcd', q, rel_embed)
+        scores = scores.reshape(B, H, L, 1, self.kernel_size).expand(-1, -1, -1, L, -1)
+        return scores
 
     def forward(self, x):
         B, C, H, W = x.shape
@@ -243,14 +257,14 @@ class KernelTransformer(nn.Module):
         x = self.pos_embed(x)
         # cls_token = self.cls_token.expand(x.shape[0], -1, -1)
         # x = torch.cat((cls_token, x), dim=1)
-        cls_token = self.cls_token.expand(x.shape[0], -1, -1, x.shape[-1])
-        x = torch.cat((cls_token, x), dim=2)
+        # cls_token = self.cls_token.expand(x.shape[0], -1, -1, x.shape[-1])
+        # x = torch.cat((cls_token, x), dim=2)
         for blk in self.blocks:
             x = blk(x)
-        # x = x.mean(dim=[2,3])  # Global average pooling
-        cls_output = x[:, :, 0, 0]
-        # return self.classifier(x)
-        return self.classifier(cls_output)
+        x = x.mean(dim=[2,3])  # Global average pooling
+        # cls_output = x[:, :, 0, 0]
+        return self.classifier(x)
+        # return self.classifier(cls_output)
 
 
 # if __name__ == '__main__':
