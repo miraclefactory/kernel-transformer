@@ -23,11 +23,11 @@ transform = transforms.Compose([
 ])
 train_set = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=256,
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=128,
                                           shuffle=True, num_workers=2)
 test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=256,
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=128,
                                          shuffle=False, num_workers=2)
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 
            'dog', 'frog', 'horse', 'ship', 'truck')
@@ -70,11 +70,12 @@ for epoch in range(num_epochs):
     bar.close()
 
     epoch_loss = running_loss / len(train_set)
-    print(f'Epoch {epoch} loss: {epoch_loss}')
+    print(f'Loss: {epoch_loss}')
 
     model.eval()
     correct, total = 0, 0
     with torch.no_grad():
+        bar = tqdm(total=len(test_loader))
         for images, labels in test_loader:
             images = images.to(device)
             labels = labels.to(device)
@@ -83,6 +84,10 @@ for epoch in range(num_epochs):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+
+            bar.update(1)
+
+        bar.close()
 
     accuracy = round((correct / total) * 100, 2)
     print(f'Accuracy: {accuracy}')
