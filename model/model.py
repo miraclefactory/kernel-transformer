@@ -148,7 +148,7 @@ class SlidingKernelAttention2D(nn.Module):
 
         h_bias = self.relative_positional_bias(q, self.rel_embed_h)
         w_bias = self.relative_positional_bias(q, self.rel_embed_w)
-        dots += h_bias + w_bias.transpose(-1, -2)
+        dots = dots + h_bias + w_bias
 
         attn = dots.softmax(dim=-1)
         
@@ -158,12 +158,32 @@ class SlidingKernelAttention2D(nn.Module):
     
     def relative_positional_bias(self, q, rel_embed):
         B, H, L, C = q.shape
-        scores = torch.einsum('bhlc,md->bhlmcd', q, rel_embed)
+        scores = q @ rel_embed.transpose(0, 1)
         scores = scores.reshape(B, H, L, 1, self.kernel_size).expand(-1, -1, -1, L, -1)
+        scores = scores.sum(dim=-1)
         return scores
 
+    # def forward(self, x):
+    #     B, C, H, W = x.shape
+    #     out = torch.zeros_like(x)
+
+    #     for i in range(0, H - self.kernel_size + 1, self.stride):
+    #         for j in range(0, W - self.kernel_size + 1, self.stride):
+    #             x_window = x[:, :, i:i+self.kernel_size, j:j+self.kernel_size]
+    #             # Reshape for attention
+    #             x_view = x_window.permute(0, 2, 3, 1).reshape(B, -1, C)
+    #             attn_out = self.comp_attention(x_view)
+    #             # Reshape back to spatial format
+    #             attn_out = attn_out.reshape(B, self.kernel_size, self.kernel_size, C).permute(0, 3, 1, 2)
+    #             out[:, :, i:i+self.kernel_size, j:j+self.kernel_size] += attn_out
+
+    #     return out
+    
     def forward(self, x):
-        B, C, H, W = x.shape
+        B, L, C = x.shape
+        # convert x to B, C, H, W to facilitate extraction of sliding kernels
+        H, W = int(L**0.5), int(L**0.5)
+        x = x.reshape(B, C, H, W).permute(0, 1, 3, 2)
         out = torch.zeros_like(x)
 
         for i in range(0, H - self.kernel_size + 1, self.stride):
@@ -176,7 +196,7 @@ class SlidingKernelAttention2D(nn.Module):
                 attn_out = attn_out.reshape(B, self.kernel_size, self.kernel_size, C).permute(0, 3, 1, 2)
                 out[:, :, i:i+self.kernel_size, j:j+self.kernel_size] += attn_out
 
-        return out
+        return out.permute(0, 1, 3, 2).reshape(B, L, C)
 
 
 class KernelTransformerBlock(nn.Module):
@@ -232,11 +252,11 @@ class KernelTransformerBlock(nn.Module):
 class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads, num_classes):
         super(KernelTransformer, self).__init__()
-        self.patch_embed = PatchEmbedding2D(in_channels, patch_size, emb_size)
-        # self.num_patches = (emb_size // patch_size) ** 2
-        # self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
-        grid_size = 32 // patch_size
-        self.pos_embed = PositionalEmbedding2D(emb_size, grid_size, grid_size)
+        self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
+        self.num_patches = (emb_size // patch_size) ** 2
+        self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
+        # grid_size = 32 // patch_size
+        # self.pos_embed = PositionalEmbedding2D(emb_size, grid_size, grid_size)
         self.cls_token = nn.Parameter(torch.zeros(1, emb_size, 1, 1))
         self.small_blocks = num_blocks // 3
         self.medium_blocks = num_blocks // 3
@@ -261,7 +281,8 @@ class KernelTransformer(nn.Module):
         # x = torch.cat((cls_token, x), dim=2)
         for blk in self.blocks:
             x = blk(x)
-        x = x.mean(dim=[2,3])  # Global average pooling
+        # x = x.mean(dim=[2,3])  # Global average pooling
+        x = x.mean(dim=1)  # Global average pooling
         # cls_output = x[:, :, 0, 0]
         return self.classifier(x)
         # return self.classifier(cls_output)
