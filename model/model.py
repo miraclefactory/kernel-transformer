@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import count_parameters
+# from utils import count_parameters
 
 
 class PatchEmbedding(nn.Module):
@@ -17,7 +17,7 @@ class PatchEmbedding(nn.Module):
 
 class PatchEmbedding2D(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, patch_size: int, permute: bool = True):
-        super(PatchEmbedding, self).__init__()
+        super(PatchEmbedding2D, self).__init__()
         self.patch_size = patch_size
         self.permute = permute
         self.proj = nn.Unfold(kernel_size=patch_size, stride=patch_size)
