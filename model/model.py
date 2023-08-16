@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from utils import count_parameters
+from utils import count_parameters
 
 
 class PatchEmbedding(nn.Module):
@@ -16,13 +16,23 @@ class PatchEmbedding(nn.Module):
 
 
 class PatchEmbedding2D(nn.Module):
-    def __init__(self, in_channels: int, patch_size: int, emb_size: int):
-        super(PatchEmbedding2D, self).__init__()
+    def __init__(self, in_channels: int, out_channels: int, patch_size: int, permute: bool = True):
+        super(PatchEmbedding, self).__init__()
         self.patch_size = patch_size
-        self.proj = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
+        self.permute = permute
+        self.proj = nn.Unfold(kernel_size=patch_size, stride=patch_size)
+        self.linear = nn.Linear(in_channels * patch_size ** 2, out_channels)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.proj(x)  # [B, emb_size, H', W']
+        if self.permute:
+            B, H, W, C = x.shape
+            x = x.permute(0, 3, 1, 2)
+        else:
+            B, C, H, W = x.shape
+        H, W = H // self.patch_size, W // self.patch_size
+        x = self.proj(x).view(B, -1, H, W).permute(0, 2, 3, 1)
+        x = self.linear(x)
+        return x
 
 
 class PositionalEmbedding(nn.Module):
@@ -33,36 +43,6 @@ class PositionalEmbedding(nn.Module):
 
     def forward(self, x):
         return x + self.pos_emb
-
-
-class PositionalEmbedding2D(nn.Module):
-    def __init__(self, dim: int, h: int, w: int):
-        super(PositionalEmbedding2D, self).__init__()
-        
-        self.row_embed = nn.Embedding(h, dim // 2)
-        self.col_embed = nn.Embedding(w, dim // 2)
-        
-        self.h, self.w = h, w
-        self.dim = dim
-        
-    def forward(self, x):
-        # x shape: [B, C, H, W]
-        
-        # Create positional indices
-        rows = torch.arange(0, self.h, device=x.device).unsqueeze(-1)
-        cols = torch.arange(0, self.w, device=x.device).unsqueeze(0)
-        
-        row_embeds = self.row_embed(rows)
-        col_embeds = self.col_embed(cols)
-        
-        # Combine row and column embeddings to create a grid
-        pos_embed = torch.cat([row_embeds.expand(self.h, self.w, self.dim // 2), 
-                               col_embeds.expand(self.h, self.w, self.dim // 2)], dim=2)  # [H, W, dim]
-        
-        # Reshape to match the shape of x
-        pos_embed = pos_embed.permute(2, 0, 1).unsqueeze(0).expand(x.shape[0], self.dim, self.h, self.w)
-        
-        return x + pos_embed
 
 
 class KernelAttention(nn.Module):
@@ -162,45 +142,26 @@ class SlidingKernelAttention2D(nn.Module):
         scores = scores.reshape(B, H, L, 1, self.kernel_size).expand(-1, -1, -1, L, -1)
         scores = scores.sum(dim=-1)
         return scores
-
-    # def forward(self, x):
-    #     B, C, H, W = x.shape
-    #     out = torch.zeros_like(x)
-
-    #     for i in range(0, H - self.kernel_size + 1, self.stride):
-    #         for j in range(0, W - self.kernel_size + 1, self.stride):
-    #             x_window = x[:, :, i:i+self.kernel_size, j:j+self.kernel_size]
-    #             # Reshape for attention
-    #             x_view = x_window.permute(0, 2, 3, 1).reshape(B, -1, C)
-    #             attn_out = self.comp_attention(x_view)
-    #             # Reshape back to spatial format
-    #             attn_out = attn_out.reshape(B, self.kernel_size, self.kernel_size, C).permute(0, 3, 1, 2)
-    #             out[:, :, i:i+self.kernel_size, j:j+self.kernel_size] += attn_out
-
-    #     return out
     
     def forward(self, x):
-        B, L, C = x.shape
-        # convert x to B, C, H, W to facilitate extraction of sliding kernels
-        H, W = int(L**0.5), int(L**0.5)
-        x = x.reshape(B, C, H, W).permute(0, 1, 3, 2)
+        B, H, W, C = x.shape
         out = torch.zeros_like(x)
 
         for i in range(0, H - self.kernel_size + 1, self.stride):
             for j in range(0, W - self.kernel_size + 1, self.stride):
-                x_window = x[:, :, i:i+self.kernel_size, j:j+self.kernel_size]
+                x_window = x[:, i:i+self.kernel_size, j:j+self.kernel_size, :]
                 # Reshape for attention
-                x_view = x_window.permute(0, 2, 3, 1).reshape(B, -1, C)
+                x_view = x_window.permute(0, 3, 1, 2).reshape(B, -1, C)
                 attn_out = self.comp_attention(x_view)
                 # Reshape back to spatial format
-                attn_out = attn_out.reshape(B, self.kernel_size, self.kernel_size, C).permute(0, 3, 1, 2)
-                out[:, :, i:i+self.kernel_size, j:j+self.kernel_size] += attn_out
-
-        return out.permute(0, 1, 3, 2).reshape(B, L, C)
+                attn_out = attn_out.reshape(B, C, self.kernel_size, self.kernel_size).permute(0, 2, 3, 1)
+                out[:, i:i+self.kernel_size, j:j+self.kernel_size, :] += attn_out
+        
+        return out
 
 
 class KernelTransformerBlock(nn.Module):
-    def __init__(self, dim, heads=8, kernel_size=8, stride=4, mlp_ratio=2, drop=0.1):
+    def __init__(self, dim, heads=8, kernel_size=8, stride=4, mlp_ratio=4, drop=0.1):
         super(KernelTransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
         # self.attention = KernelAttention(dim, heads=heads)
@@ -219,19 +180,19 @@ class KernelTransformerBlock(nn.Module):
         # self.pos_emb = PositionalEmbedding(dim, dim)
 
     def forward(self, x):
-        # nor = self.norm1(x)
-        nor = self.layer_norm_2d(x, self.norm1)
+        nor = self.norm1(x)
+        # nor = self.layer_norm_2d(x, self.norm1)
         attn_out = self.attention(nor)
         # attn_out, _ = self.attention(nor, nor, nor)
         attn_out = self.dropout(attn_out)
         x = x + attn_out
 
-        # nor = self.norm2(x)
-        nor = self.layer_norm_2d(x, self.norm2)
-        B, C, H, W = nor.shape
-        nor = nor.reshape(B, C, H*W).permute(0, 2, 1)  # [B, H*W, C]
+        nor = self.norm2(x)
+        # nor = self.layer_norm_2d(x, self.norm2)
+        # B, C, H, W = nor.shape
+        # nor = nor.reshape(B, C, H*W).permute(0, 2, 1)  # [B, H*W, C]
         mlp_out = self.mlp(nor)
-        mlp_out = mlp_out.reshape(B, H, W, C).permute(0, 3, 1, 2)
+        # mlp_out = mlp_out.reshape(B, H, W, C).permute(0, 3, 1, 2)
         x = x + mlp_out
         
         # return self.pos_emb(x)
@@ -258,23 +219,26 @@ class KernelTransformer(nn.Module):
         # grid_size = 32 // patch_size
         # self.pos_embed = PositionalEmbedding2D(emb_size, grid_size, grid_size)
         self.cls_token = nn.Parameter(torch.zeros(1, emb_size, 1, 1))
-        self.small_blocks = num_blocks // 3
-        self.medium_blocks = num_blocks // 3
-        self.large_blocks = num_blocks - self.small_blocks - self.medium_blocks
         self.blocks = nn.ModuleList(
-            [KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
+            [PatchEmbedding2D(in_channels, emb_size, 2, permute=False),
              KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
-             KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=2),
-             KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=2),
-             KernelTransformerBlock(emb_size, heads=8, kernel_size=8, stride=2),
-             KernelTransformerBlock(emb_size, heads=16, kernel_size=16, stride=8),
-             KernelTransformerBlock(emb_size, heads=16, kernel_size=16, stride=8)]
+             KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
+             PatchEmbedding2D(emb_size, emb_size * 2, 2),
+             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
+             PatchEmbedding2D(emb_size * 2, emb_size * 4, 2),
+             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2)]
         )
-        self.classifier = nn.Linear(emb_size, num_classes) # Added classifier head
+        self.classifier = nn.Linear(emb_size * 4, num_classes) # Added classifier head
 
     def forward(self, x):
-        x = self.patch_embed(x)
-        x = self.pos_embed(x)
+        # x = self.patch_embed(x)
+        # x = self.pos_embed(x)
         # cls_token = self.cls_token.expand(x.shape[0], -1, -1)
         # x = torch.cat((cls_token, x), dim=1)
         # cls_token = self.cls_token.expand(x.shape[0], -1, -1, x.shape[-1])
@@ -282,14 +246,15 @@ class KernelTransformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)
         # x = x.mean(dim=[2,3])  # Global average pooling
-        x = x.mean(dim=1)  # Global average pooling
+        # print(x.shape)
+        x = x.mean(dim=[1,2])  # Global average pooling
         # cls_output = x[:, :, 0, 0]
         return self.classifier(x)
         # return self.classifier(cls_output)
 
 
 # if __name__ == '__main__':
-#     model = KernelTransformer(in_channels=3, emb_size=512, patch_size=2, 
+#     model = KernelTransformer(in_channels=3, emb_size=96, patch_size=2, 
 #                               num_blocks=6, heads=8, num_classes=10)
 #     print(model)
 #     print(f"Number of parameters: {count_parameters(model):,}")
