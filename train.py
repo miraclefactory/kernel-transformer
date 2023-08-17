@@ -22,7 +22,7 @@ transform = transforms.Compose([
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 train_set = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
+                                        download=True, transform=transform_train)
 train_loader = torch.utils.data.DataLoader(train_set, batch_size=512,
                                           shuffle=True, num_workers=2)
 test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
@@ -39,8 +39,8 @@ model = KernelTransformer(in_channels=3, emb_size=96, patch_size=2,
                           num_blocks=6, heads=8, num_classes=10).to(device)
 model = nn.DataParallel(model)
 criterion = torch.nn.CrossEntropyLoss()
-num_epochs = 100
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
+num_epochs = 200
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 # scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=3e-4,
