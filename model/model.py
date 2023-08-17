@@ -192,9 +192,9 @@ class KernelTransformerBlock(nn.Module):
 class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, num_blocks, heads, num_classes):
         super(KernelTransformer, self).__init__()
-        self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
-        self.num_patches = (emb_size // patch_size) ** 2
-        self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
+        # self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
+        # self.num_patches = (emb_size // patch_size) ** 2
+        # self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
         # grid_size = 32 // patch_size
         # self.pos_embed = PositionalEmbedding2D(emb_size, grid_size, grid_size)
         self.cls_token = nn.Parameter(torch.zeros(1, emb_size, 1, 1))
@@ -212,9 +212,9 @@ class KernelTransformer(nn.Module):
              KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
              KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
              KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-             PatchEmbedding2D(emb_size * 4, emb_size * 8, 2),
-             KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=2, stride=1),
-             KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=2, stride=1)]
+             PatchEmbedding2D(emb_size * 4, emb_size * 8, 1),
+             KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=4, stride=2)]
         )
         self.classifier = nn.Sequential(
             nn.LayerNorm(emb_size * 8),
@@ -222,20 +222,10 @@ class KernelTransformer(nn.Module):
         )
 
     def forward(self, x):
-        # x = self.patch_embed(x)
-        # x = self.pos_embed(x)
-        # cls_token = self.cls_token.expand(x.shape[0], -1, -1)
-        # x = torch.cat((cls_token, x), dim=1)
-        # cls_token = self.cls_token.expand(x.shape[0], -1, -1, x.shape[-1])
-        # x = torch.cat((cls_token, x), dim=2)
         for blk in self.blocks:
             x = blk(x)
-        # x = x.mean(dim=[2,3])  # Global average pooling
-        # print(x.shape)
         x = x.mean(dim=[1,2])  # Global average pooling
-        # cls_output = x[:, :, 0, 0]
         return self.classifier(x)
-        # return self.classifier(cls_output)
 
 
 # if __name__ == '__main__':
