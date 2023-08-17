@@ -43,27 +43,6 @@ class PositionalEmbedding(nn.Module):
 
     def forward(self, x):
         return x + self.pos_emb
-
-
-class KernelAttention(nn.Module):
-    def __init__(self, dim, heads=8):
-        super(KernelAttention, self).__init__()
-        self.heads = heads
-        self.scale = dim ** -0.5
-        self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
-        self.to_out = nn.Linear(dim, dim)
-
-    def forward(self, x):
-        B, L, C = x.shape
-        qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: t.reshape(B, L, self.heads, C // self.heads).permute(0, 2, 1, 3), qkv)
-        
-        dots = (q @ k.transpose(-1, -2)) * self.scale
-        attn = dots.softmax(dim=-1)
-        
-        out = attn @ v
-        out = out.transpose(1, 2).reshape(B, L, C)
-        return self.to_out(out)
     
 
 class SlidingKernelAttention(nn.Module):
@@ -223,18 +202,24 @@ class KernelTransformer(nn.Module):
             [PatchEmbedding2D(in_channels, emb_size, 2, permute=False),
              KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
              KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
-             KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
              PatchEmbedding2D(emb_size, emb_size * 2, 2),
-             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
-             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
-             KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
              KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
              KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
              PatchEmbedding2D(emb_size * 2, emb_size * 4, 2),
              KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2)]
+             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
+             KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
+             PatchEmbedding2D(emb_size * 4, emb_size * 8, 2),
+             KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=2, stride=1),
+             KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=2, stride=1)]
         )
-        self.classifier = nn.Linear(emb_size * 4, num_classes) # Added classifier head
+        self.classifier = nn.Sequential(
+            nn.LayerNorm(emb_size * 8),
+            nn.Linear(emb_size * 8, num_classes)
+        )
 
     def forward(self, x):
         # x = self.patch_embed(x)

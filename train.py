@@ -23,11 +23,11 @@ transform = transforms.Compose([
 ])
 train_set = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=256,
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=512,
                                           shuffle=True, num_workers=2)
 test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=256,
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=512,
                                          shuffle=False, num_workers=2)
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 
            'dog', 'frog', 'horse', 'ship', 'truck')
@@ -51,6 +51,7 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
+    correct, total = 0, 0
     print(f'\nEpoch {epoch+1}/{num_epochs}')
     bar = tqdm(total=len(train_loader))
     for images, labels in train_loader:
@@ -59,6 +60,10 @@ for epoch in range(num_epochs):
 
         optimizer.zero_grad()
         outputs = model(images)
+        # calculate training accuracy
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -68,6 +73,9 @@ for epoch in range(num_epochs):
         bar.update(1)
 
     bar.close()
+
+    train_accuracy = round((correct / total) * 100, 2)
+    print(f'Training Accuracy: {train_accuracy}')
 
     epoch_loss = running_loss / len(train_set)
     print(f'Loss: {epoch_loss}')
@@ -90,7 +98,7 @@ for epoch in range(num_epochs):
         bar.close()
 
     accuracy = round((correct / total) * 100, 2)
-    print(f'Accuracy: {accuracy}')
+    print(f'Val. Accuracy: {accuracy}')
 
     log_csv(epoch, accuracy, epoch_loss)
 
