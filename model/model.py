@@ -167,17 +167,6 @@ class KernelTransformerBlock(nn.Module):
 
         return x
 
-    # def layer_norm_2d(self, x, norm_layer):
-    #     """
-    #     Applies LayerNorm to a tensor of shape [B, C, H, W].
-    #     Reshapes to [B, H*W, C] for normalization and then reshapes back.
-    #     """
-    #     B, C, H, W = x.size()
-    #     x = x.permute(0, 2, 3, 1).contiguous().view(B, H*W, C)  # Reshape to [B, H*W, C]
-    #     x = norm_layer(x)  # Apply LayerNorm
-    #     x = x.view(B, H, W, C).permute(0, 3, 1, 2)  # Reshape back to [B, C, H, W]
-    #     return x
-
 
 class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, heads, num_classes):
