@@ -191,24 +191,6 @@ class KernelTransformer(nn.Module):
         # grid_size = 32 // patch_size
         # self.pos_embed = PositionalEmbedding2D(emb_size, grid_size, grid_size)
         # self.cls_token = nn.Parameter(torch.zeros(1, emb_size, 1, 1))
-        # self.blocks = nn.ModuleList([
-        #     PatchEmbedding2D(in_channels, emb_size, 2, permute=False),
-        #     KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size, heads=4, kernel_size=4, stride=2),
-        #     PatchEmbedding2D(emb_size, emb_size * 2, 2),
-        #     KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size * 2, heads=8, kernel_size=4, stride=2),
-        #     PatchEmbedding2D(emb_size * 2, emb_size * 4, 2),
-        #     KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size * 4, heads=16, kernel_size=4, stride=2),
-        #     PatchEmbedding2D(emb_size * 4, emb_size * 8, 1),
-        #     KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=4, stride=2),
-        #     KernelTransformerBlock(emb_size * 8, heads=32, kernel_size=4, stride=2)
-        # ])
         self.blocks = nn.ModuleList([
             PatchEmbedding2D(in_channels, emb_size, 2, permute=False),
             KernelTransformerStage(emb_size, struct[0], heads=4, kernel_size=4, stride=2),
