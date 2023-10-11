@@ -7,6 +7,15 @@ from csv_logger import log_csv
 from tqdm import tqdm
 
 
+save_model = True
+continue_training = False
+
+
+def save_checkpoint(state, filename='checkpoint/checkpoint.pth.tar'):
+    print('saving model checkpoint ...')
+    torch.save(state, filename)
+
+
 # Data augmentation and normalization
 transform_train = transforms.Compose([
     transforms.RandomHorizontalFlip(),
@@ -39,7 +48,7 @@ model = KernelTransformer(in_channels=3, emb_size=96, patch_size=2,
                           heads=8, num_classes=10, struct=(2, 2, 6, 2)).to(device)
 model = nn.DataParallel(model)
 criterion = torch.nn.CrossEntropyLoss()
-num_epochs = 200
+num_epochs = 400
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
@@ -48,7 +57,16 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 #                                                 epochs=num_epochs,
 #                                                 pct_start=0.05)
 
-for epoch in range(num_epochs):
+start_epoch = 0
+if continue_training:
+    checkpoint = torch.load('checkpoint/checkpoint.pth.tar')
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    scheduler.load_state_dict(checkpoint['scheduler'])
+    start_epoch = checkpoint['epoch']
+    print('checkpoint loaded, resuming on epoch: ', start_epoch)
+
+for epoch in range(start_epoch, num_epochs):
     model.train()
     running_loss = 0.0
     correct, total = 0, 0
@@ -100,6 +118,14 @@ for epoch in range(num_epochs):
     accuracy = round((correct / total) * 100, 2)
     print(f'Val. Accuracy: {accuracy}')
 
+    if save_model:
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'accuracy': accuracy,
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'scheduler': scheduler.state_dict()
+        })
     log_csv(epoch, accuracy, epoch_loss)
 
     scheduler.step()
