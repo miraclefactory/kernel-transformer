@@ -5,6 +5,7 @@ A transformer model based on sliding kernel self attention mechanism. This model
 | Model | Params | Val. Acc. |
 | :---: | :---: | :---: |
 | Swin Transformer (tiny) | 26,598,166 | 85.3% @200eps |
+| Swin Transformer (tiny) | 26,598,166 | 85.8% @300eps |
 | Kernel Transformer (tiny) | 26,600,362 | 85.9% @200eps |
 | Kernel Transformer (tiny) | 26,600,362 | 86.7% @300eps |
 
