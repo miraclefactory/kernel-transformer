@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+# from flash_attn import flash_attn_qkvpacked_func, flash_attn_func
 
 
 class PatchEmbedding(nn.Module):
@@ -76,10 +77,21 @@ class SlidingKernelAttention(nn.Module):
         out = attn @ v
         out = out.transpose(1, 2).reshape(B, L, C)
         return self.to_out(out)
+    
+    # def flash_attention(self, x_view):
+    #     B, L, C = x_view.shape
+    #     qkv = self.to_qkv(x_view).chunk(3, dim=-1)
+    #     q, k, v = map(lambda t: t.reshape(B, L, self.heads, C // self.heads).permute(0, 2, 1, 3), qkv)
+
+    #     attn = flash_attn_func(q, k, v, self.scale, self.heads, self.kernel_size, self.stride)
+
+    #     out = attn @ v
+    #     out = out.transpose(1, 2).reshape(B, L, C)
+    #     return self.to_out(out)
 
 
 class SlidingKernelAttention2D(nn.Module):
-    def __init__(self, dim: int, kernel_size: int = 2, stride: int = 1, heads: int = 8):
+    def __init__(self, dim: int, kernel_size: int = 2, stride: int = 1, heads: int = 8, rel_pos: bool = False):
         super(SlidingKernelAttention2D, self).__init__()
         self.heads = heads
         self.kernel_size = kernel_size
@@ -103,9 +115,10 @@ class SlidingKernelAttention2D(nn.Module):
 
         dots = (q @ k.transpose(-1, -2)) * self.scale
 
-        h_bias = self.relative_positional_bias(q, self.rel_embed_h)
-        w_bias = self.relative_positional_bias(q, self.rel_embed_w)
-        dots = dots + h_bias + w_bias
+        if self.rel_pos:
+            h_bias = self.relative_positional_bias(q, self.rel_embed_h)
+            w_bias = self.relative_positional_bias(q, self.rel_embed_w)
+            dots = dots + h_bias + w_bias
 
         attn = dots.softmax(dim=-1)
 
