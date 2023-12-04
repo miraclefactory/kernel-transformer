@@ -91,12 +91,13 @@ class SlidingKernelAttention(nn.Module):
 
 
 class SlidingKernelAttention2D(nn.Module):
-    def __init__(self, dim: int, kernel_size: int = 2, stride: int = 1, heads: int = 8, rel_pos: bool = False):
+    def __init__(self, dim: int, kernel_size: int = 2, stride: int = 1, heads: int = 8, rel_pos: bool = True):
         super(SlidingKernelAttention2D, self).__init__()
         self.heads = heads
         self.kernel_size = kernel_size
         self.stride = stride
         self.scale = (dim // heads) ** -0.5
+        self.rel_pos = rel_pos
 
         # Relative positional bias
         self.rel_embed_h = nn.Parameter(torch.randn(kernel_size, dim // heads))
