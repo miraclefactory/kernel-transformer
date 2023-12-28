@@ -128,7 +128,7 @@ for epoch in range(start_epoch, num_epochs):
             'optimizer': optimizer.state_dict(),
             'scheduler': scheduler.state_dict()
         })
-    log_csv(epoch, accuracy, epoch_loss)
+    log_csv(epoch, train_accuracy, accuracy, epoch_loss)
 
     scheduler.step()
 
