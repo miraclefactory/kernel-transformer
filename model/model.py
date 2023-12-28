@@ -199,14 +199,8 @@ class KernelTransformerStage(nn.Module):
 class KernelTransformer(nn.Module):
     def __init__(self, in_channels, emb_size, patch_size, heads, num_classes, struct):
         super(KernelTransformer, self).__init__()
-        # self.patch_embed = PatchEmbedding(in_channels, patch_size, emb_size)
-        # self.num_patches = (emb_size // patch_size) ** 2
-        # self.pos_embed = PositionalEmbedding(emb_size, self.num_patches + 1)
-        # grid_size = 32 // patch_size
-        # self.pos_embed = PositionalEmbedding2D(emb_size, grid_size, grid_size)
-        # self.cls_token = nn.Parameter(torch.zeros(1, emb_size, 1, 1))
         self.blocks = nn.ModuleList([
-            PatchEmbedding2D(in_channels, emb_size, 2, permute=False),
+            PatchEmbedding2D(in_channels, emb_size, patch_size, permute=False),
             KernelTransformerStage(emb_size, struct[0], heads=4, kernel_size=4, stride=2),
             PatchEmbedding2D(emb_size, emb_size * 2, 2),
             KernelTransformerStage(emb_size * 2, struct[1], heads=8, kernel_size=4, stride=2),
@@ -224,6 +218,52 @@ class KernelTransformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)
         x = x.mean(dim=[1,2])  # Global average pooling
+        return self.classifier(x)
+
+
+class MaskedKernelTransformer(nn.Module):
+    def __init__(self, in_channels, emb_size, patch_size, heads, num_classes, struct, mask_ratio=0.1):
+        super(MaskedKernelTransformer, self).__init__()
+        self.emb_size = emb_size
+        self.img_size = 32 # CIFAR-10 image size
+        self.num_patches = (self.img_size // patch_size) ** 2
+        self.mask_ratio = mask_ratio
+        self.blocks = nn.ModuleList([
+            PatchEmbedding2D(in_channels, emb_size, patch_size, permute=False),
+            KernelTransformerStage(emb_size, struct[0], heads=4, kernel_size=4, stride=2),
+            PatchEmbedding2D(emb_size, emb_size * 2, 2),
+            KernelTransformerStage(emb_size * 2, struct[1], heads=8, kernel_size=4, stride=2),
+            PatchEmbedding2D(emb_size * 2, emb_size * 4, 2),
+            KernelTransformerStage(emb_size * 4, struct[2], heads=16, kernel_size=4, stride=2),
+            PatchEmbedding2D(emb_size * 4, emb_size * 8, 1),
+            KernelTransformerStage(emb_size * 8, struct[3], heads=32, kernel_size=4, stride=2)
+        ])
+        self.classifier = nn.Sequential(
+            nn.LayerNorm(emb_size * 8),
+            nn.Linear(emb_size * 8, num_classes)
+        )
+
+    # randomly mask some patches
+    def generate_random_mask(self, ratio):
+        num_masked_patches = int(self.num_patches * ratio)
+        mask = torch.ones(self.num_patches)
+        mask_idx = torch.randperm(self.num_patches)[:num_masked_patches]
+        mask[mask_idx] = 0
+        return mask
+
+    def forward(self, x, masked = True):
+        # masked during training, unmasked during testing
+        applied = False
+        if masked:
+            mask = self.generate_random_mask(self.mask_ratio).to(x.device)
+            mask = mask.view(16, 16)[None, :, :, None]
+            mask = mask.expand(x.size(0), -1, -1, self.emb_size)
+        for blk in self.blocks:
+            x = blk(x)
+            if isinstance(blk, PatchEmbedding2D) and masked and not applied:
+                x = x * mask
+                applied = True
+        x = x.mean(dim=[1,2])
         return self.classifier(x)
 
 

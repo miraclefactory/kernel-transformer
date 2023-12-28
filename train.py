@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
-from model.model import KernelTransformer
+from model.model import KernelTransformer, MaskedKernelTransformer
 from csv_logger import log_csv
 from tqdm import tqdm
 
@@ -44,11 +44,13 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(' - Training device currently set to:', device)
 
-model = KernelTransformer(in_channels=3, emb_size=96, patch_size=2, 
-                          heads=8, num_classes=10, struct=(2, 2, 6, 2)).to(device)
+model = MaskedKernelTransformer(in_channels=3, emb_size=96, patch_size=2, 
+                                heads=8, num_classes=10, struct=(2, 2, 6, 2), mask_ratio=0.1).to(device)
+# model = KernelTransformer(in_channels=3, emb_size=96, patch_size=2, 
+#                           heads=8, num_classes=10, struct=(2, 2, 6, 2)).to(device)
 model = nn.DataParallel(model)
 criterion = torch.nn.CrossEntropyLoss()
-num_epochs = 400
+num_epochs = 300
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
@@ -77,7 +79,7 @@ for epoch in range(start_epoch, num_epochs):
         labels = labels.to(device)
 
         optimizer.zero_grad()
-        outputs = model(images)
+        outputs = model(images, masked=True)
         # calculate training accuracy
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
@@ -106,7 +108,7 @@ for epoch in range(start_epoch, num_epochs):
             images = images.to(device)
             labels = labels.to(device)
 
-            outputs = model(images)
+            outputs = model(images, masked=False)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
