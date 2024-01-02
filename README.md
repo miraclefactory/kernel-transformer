@@ -8,6 +8,7 @@ A transformer model based on sliding kernel self attention mechanism. This model
 | Swin Transformer (tiny) | 26,598,166 | 85.8% @300eps |
 | Kernel Transformer (tiny) | 26,600,362 | 85.9% @200eps |
 | Kernel Transformer (tiny) | 26,600,362 | 87.1% @300eps |
+| Kernel Transformer (tiny) | 26,600,362 | 88.1% @500eps |
 | Kernel Transformer (super-tiny) | 13,637,866 | 84.7% @300eps |
 
 <img width="598" alt="kernel_vs_swin" src="https://github.com/miraclefactory/kernel-transformer/assets/89094576/4d5581c2-bc09-4ac0-bd23-6f188dd011f1">
